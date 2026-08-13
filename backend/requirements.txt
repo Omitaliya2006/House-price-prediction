@@ -1,0 +1,15 @@
+# Python packages needed for the House Price Predictor backend.
+# Install all of these at once with:  pip install -r requirements.txt
+
+# --- Data handling ---
+pandas>=2.0        # load & manipulate the CSV dataset (tables/DataFrames)
+numpy>=1.24        # numerical operations that pandas & scikit-learn rely on
+
+# --- Machine Learning ---
+scikit-learn>=1.3  # preprocessing pipeline + regression models
+joblib>=1.3        # save/load the trained model pipeline to a .pkl file
+
+# --- Web API (backend server) ---
+fastapi>=0.110     # framework for building the REST API
+uvicorn[standard]>=0.29  # the server that actually runs the FastAPI app
+pydantic>=2.0      # validates incoming request data (comes with FastAPI)

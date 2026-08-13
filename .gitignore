@@ -1,0 +1,51 @@
+# ==========================================================================
+# .gitignore  —  House Price Predictor
+# --------------------------------------------------------------------------
+# Git uses this file to decide which files/folders it should NOT track.
+# We ignore anything that is machine-specific, auto-generated, or huge — so
+# the repository stays small and clean. Anyone who clones the project can
+# recreate these locally (e.g. by making a fresh venv and running the code).
+# ==========================================================================
+
+# --- Python virtual environments (NEVER commit these) --------------------
+# These hold hundreds of MB of installed packages tied to one machine.
+# A teammate recreates them from requirements.txt instead.
+venv/
+.venv/
+env/
+ENV/
+
+# --- Python cache / compiled files ---------------------------------------
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+
+# --- Testing / tooling caches --------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# --- Editor / IDE settings (machine-specific) ----------------------------
+.vscode/
+.idea/
+*.swp
+
+# --- Operating-system junk files -----------------------------------------
+.DS_Store          # macOS
+Thumbs.db          # Windows
+Desktop.ini        # Windows
+
+# --- Logs and environment secrets ----------------------------------------
+*.log
+.env
+
+# --------------------------------------------------------------------------
+# NOTE: We DO commit the trained model file
+#   backend/model/house_price_model.pkl
+# so the API runs immediately after cloning, without retraining. If that file
+# ever becomes too large for Git, uncomment the line below and regenerate it
+# locally with:  python train_model.py
+# --------------------------------------------------------------------------
+# backend/model/house_price_model.pkl

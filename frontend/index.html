@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Plat — Surveyed House Price Estimates</title>
+<meta name="description" content="Get an instant, machine-learned estimate of a house's value, presented as a surveyor's field report." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+/* ==================================================================
+   PLAT — field-survey themed valuation tool
+   One value, surveyed like a plot of land: parchment ground, forest
+   ink, a single sienna accent reserved for the estimate itself.
+   ================================================================== */
+
+:root {
+  color-scheme: light;
+  --ink:        #1B2A22;
+  --ink-2:      #24382C;
+  --ink-soft:   #56685D;
+  --paper:      #F2ECDB;
+  --paper-2:    #E9DFC3;
+  --surface:    #FFFCF4;
+  --line:       #D8C9A0;
+  --moss:       #3D6B4E;
+  --moss-2:     #2B4E38;
+  --sienna:     #B14E29;
+  --sienna-2:   #8C3B1E;
+  --gold:       #B9852D;
+  --gold-soft:  #EFDDAE;
+
+  --font-display: "Newsreader", Georgia, serif;
+  --font-body:    "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono:    "IBM Plex Mono", ui-monospace, monospace;
+
+  --maxw: 1120px;
+  --radius: 4px;
+  --shadow: 0 1px 2px rgba(27,42,34,.06), 0 14px 32px -16px rgba(27,42,34,.22);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  background-image: radial-gradient(circle, rgba(27,42,34,.10) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+h1, h2, h3 { line-height: 1.12; margin: 0; font-weight: 600; }
+p { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+a { color: inherit; text-decoration: none; }
+em { font-style: italic; color: var(--sienna); }
+
+/* ---- shared bits ---- */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--moss-2);
+  margin-bottom: 12px;
+}
+.eyebrow--light { color: var(--gold); }
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.85rem, 3.8vw, 2.7rem);
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.section-title--light { color: #fff; }
+.section-sub { margin-top: 14px; max-width: 56ch; color: var(--ink-soft); font-size: 1.03rem; }
+.section-head { max-width: var(--maxw); margin: 0 auto; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 13px 24px;
+  background: var(--moss);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 600; font-size: .96rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .18s ease, transform .18s ease;
+}
+.btn:hover { background: var(--moss-2); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.btn--sm { padding: 8px 16px; font-size: .88rem; }
+.btn--block { width: 100%; margin-top: 4px; }
+.btn--ghost { background: transparent; color: var(--ink); border-color: var(--ink); }
+.btn--ghost:hover { background: var(--surface); }
+
+.btn__spinner {
+  width: 15px; height: 15px;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  display: none;
+  animation: spin .7s linear infinite;
+}
+.btn.is-loading .btn__spinner { display: inline-block; }
+.btn.is-loading .btn__label { opacity: .82; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ==================================================================
+   NAV
+   ================================================================== */
+.nav {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(242,236,219,.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid transparent;
+  transition: border-color .2s ease, background .2s ease;
+}
+.nav.is-scrolled { background: rgba(242,236,219,.96); border-bottom-color: var(--line); }
+.nav__inner { max-width: var(--maxw); margin: 0 auto; padding: 15px 24px; display: flex; align-items: center; gap: 24px; }
+.nav__brand { display: flex; align-items: center; gap: 9px; font-family: var(--font-display); font-weight: 600; font-size: 1.3rem; }
+.nav__mark { color: var(--sienna); display: inline-flex; }
+.nav__mark svg { width: 20px; height: 20px; }
+.nav__dot { color: var(--gold); }
+.nav__links { display: flex; gap: 26px; margin-left: auto; font-size: .94rem; color: var(--ink-soft); }
+.nav__links a { transition: color .15s ease; }
+.nav__links a:hover { color: var(--ink); }
+.nav__cta { margin-left: 8px; }
+
+/* ==================================================================
+   HERO
+   ================================================================== */
+.hero { position: relative; padding: 68px 24px 80px; }
+.hero__grid { max-width: var(--maxw); margin: 0 auto; display: grid; grid-template-columns: 1.3fr .95fr; gap: 46px; align-items: center; }
+.hero__title { font-family: var(--font-display); font-size: clamp(2.3rem, 5.6vw, 3.9rem); font-weight: 600; letter-spacing: -.02em; margin-bottom: 18px; }
+.hero__lead { max-width: 50ch; font-size: 1.1rem; color: var(--ink-soft); }
+.hero__actions { display: flex; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
+
+.hero__stats {
+  background: var(--ink);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 26px;
+  box-shadow: var(--shadow);
+  position: relative;
+}
+.hero__stats-title {
+  font-family: var(--font-mono); font-size: .7rem; letter-spacing: .16em; text-transform: uppercase;
+  color: rgba(255,255,255,.55); margin-bottom: 6px;
+}
+.stat__row { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,.12); }
+.stat__row:last-child { border-bottom: 0; }
+.stat dt { color: rgba(255,255,255,.7); font-size: .93rem; }
+.stat__num { font-family: var(--font-display); font-size: 1.6rem; color: var(--gold); }
+.stat__tag { font-family: var(--font-mono); font-size: .8rem; color: #fff; background: var(--sienna); padding: 4px 10px; border-radius: 999px; }
+
+/* ==================================================================
+   PREDICTOR
+   ================================================================== */
+.predict { padding: 76px 24px; }
+.predict .section-head { margin-bottom: 38px; }
+.predict__grid { max-width: var(--maxw); margin: 0 auto; display: grid; grid-template-columns: 1.25fr .85fr; gap: 26px; align-items: start; }
+
+.form { padding: 26px; }
+.form__group { border: 0; margin: 0 0 20px; padding: 0; }
+.form__group:last-of-type { margin-bottom: 10px; }
+.form__legend {
+  font-family: var(--font-mono); font-size: .7rem; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--moss-2); padding: 0; margin-bottom: 13px;
+}
+.form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+.form__row--3 { grid-template-columns: 1fr 1fr 1fr; }
+.form__row:last-child { margin-bottom: 0; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field__label { font-size: .87rem; font-weight: 500; color: var(--ink-soft); }
+.field__input {
+  font-family: var(--font-body); font-size: 1rem; color: var(--ink);
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 12px; transition: border-color .15s ease, box-shadow .15s ease; width: 100%;
+}
+.field__input:hover { border-color: #b9ab84; }
+.field__input:focus { outline: none; border-color: var(--moss); box-shadow: 0 0 0 3px rgba(61,107,78,.16); }
+select.field__input {
+  appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2356685D' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px;
+}
+
+.form__error { margin: 4px 0 13px; padding: 10px 13px; background: #FBEAE2; border: 1px solid var(--sienna); border-radius: var(--radius); color: var(--sienna-2); font-size: .89rem; }
+
+/* Result panel — the signature "field-survey stamp" */
+.result {
+  position: sticky; top: 92px;
+  background: var(--ink); color: #fff;
+  padding: 0; overflow: hidden;
+  border: 1px dashed rgba(255,255,255,.28);
+}
+.result__inner { position: relative; padding: 28px; }
+.result__inner::before, .result__inner::after,
+.result__corner-tl, .result__corner-br { content: ""; position: absolute; width: 14px; height: 14px; }
+.result__corner-tl { top: 8px; left: 8px; border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+.result__corner-br { bottom: 8px; right: 8px; border-bottom: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+.result__rose { position: absolute; right: 18px; top: 20px; width: 46px; height: 46px; opacity: .22; }
+.result__plat { font-family: var(--font-mono); font-size: .68rem; letter-spacing: .1em; color: rgba(255,255,255,.5); text-transform: uppercase; margin-bottom: 18px; }
+.result__empty { padding: 22px 0 6px; }
+.result__hint { color: rgba(255,255,255,.62); font-size: 1rem; max-width: 28ch; }
+
+.result__label { font-family: var(--font-mono); font-size: .7rem; letter-spacing: .15em; text-transform: uppercase; color: rgba(255,255,255,.55); }
+.result__price { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.3rem, 6.6vw, 3.2rem); color: var(--gold); letter-spacing: -.01em; margin: 8px 0 12px; line-height: 1.05; }
+.result__note { color: rgba(255,255,255,.6); font-size: .84rem; max-width: 32ch; }
+.result__record { margin-top: 20px; padding-top: 16px; border-top: 1px dashed rgba(255,255,255,.22); display: grid; grid-template-columns: 1fr 1fr; gap: 9px 18px; font-size: .84rem; }
+.rec { display: flex; justify-content: space-between; gap: 10px; }
+.rec__k { color: rgba(255,255,255,.55); }
+.rec__v { font-family: var(--font-mono); color: #fff; }
+
+/* ==================================================================
+   HOW IT WORKS
+   ================================================================== */
+.how { padding: 78px 24px; background: var(--paper-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.how .section-head { margin-bottom: 42px; }
+.steps { max-width: var(--maxw); margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.step { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.step__num {
+  font-family: var(--font-mono); font-size: .88rem; color: var(--moss);
+  display: inline-block; margin-bottom: 15px;
+  border: 1px solid var(--moss); border-radius: 3px; padding: 3px 8px;
+}
+.step__title { font-family: var(--font-display); font-size: 1.18rem; margin-bottom: 7px; }
+.step__text { color: var(--ink-soft); font-size: .94rem; }
+
+/* ==================================================================
+   MODEL INFO
+   ================================================================== */
+.model { padding: 78px 24px; }
+.model .section-head { margin-bottom: 34px; }
+.table-wrap { max-width: var(--maxw); margin: 0 auto; overflow-x: auto; padding: 4px; }
+.table { width: 100%; border-collapse: collapse; min-width: 500px; }
+.table th, .table td { text-align: right; padding: 15px 18px; }
+.table th:first-child, .table td:first-child { text-align: left; }
+.table thead th { font-family: var(--font-mono); font-size: .7rem; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft); font-weight: 500; border-bottom: 1px solid var(--line); }
+.table td { border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: .93rem; }
+.table tbody tr:last-child td { border-bottom: 0; }
+.table td:first-child { font-family: var(--font-body); }
+.table__best td { background: var(--gold-soft); font-weight: 600; }
+.pill { font-family: var(--font-mono); font-size: .63rem; letter-spacing: .1em; text-transform: uppercase; background: var(--sienna); color: #fff; padding: 3px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
+.model__foot { max-width: var(--maxw); margin: 16px auto 0; color: var(--ink-soft); font-size: .89rem; }
+
+/* ==================================================================
+   DATASET
+   ================================================================== */
+.data { padding: 78px 24px; background: var(--paper-2); border-top: 1px solid var(--line); }
+.data .section-head { margin-bottom: 38px; }
+.data__grid { max-width: var(--maxw); margin: 0 auto; display: grid; grid-template-columns: .8fr 1.2fr; gap: 22px; align-items: start; }
+.data__cards { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.mini { padding: 20px; display: flex; flex-direction: column; gap: 4px; }
+.mini__num { font-family: var(--font-display); font-size: 2.3rem; color: var(--ink); line-height: 1; }
+.mini__label { font-size: .84rem; color: var(--ink-soft); }
+.data__features { padding: 26px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+.feat__title { font-family: var(--font-mono); font-size: .7rem; letter-spacing: .11em; text-transform: uppercase; color: var(--moss-2); margin-bottom: 11px; }
+.feat__list { display: flex; flex-direction: column; gap: 7px; font-family: var(--font-mono); font-size: .89rem; color: var(--ink-2); }
+.feat__list small { color: var(--ink-soft); font-size: .77rem; }
+
+/* ==================================================================
+   ABOUT
+   ================================================================== */
+.about { padding: 88px 24px; background: var(--ink); color: #fff; }
+.about__inner { max-width: 740px; margin: 0 auto; text-align: center; }
+.about__text { margin: 20px auto 0; color: rgba(255,255,255,.72); font-size: 1.08rem; max-width: 60ch; }
+.about__stack { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 28px; }
+.chip { font-family: var(--font-mono); font-size: .81rem; color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); padding: 6px 14px; border-radius: 999px; }
+
+/* ==================================================================
+   FOOTER
+   ================================================================== */
+.footer { background: #14201A; color: rgba(255,255,255,.6); padding: 38px 24px; }
+.footer__inner { max-width: var(--maxw); margin: 0 auto; text-align: center; display: flex; flex-direction: column; gap: 7px; align-items: center; }
+.footer__brand { font-family: var(--font-display); font-size: 1.18rem; color: #fff; }
+.footer__note { font-size: .89rem; }
+.footer__disclaimer { font-size: .79rem; color: rgba(255,255,255,.4); }
+
+/* ==================================================================
+   RESPONSIVE
+   ================================================================== */
+@media (max-width: 900px) {
+  .hero__grid { grid-template-columns: 1fr; gap: 30px; }
+  .predict__grid { grid-template-columns: 1fr; }
+  .result { position: static; }
+  .steps { grid-template-columns: 1fr 1fr; }
+  .data__grid { grid-template-columns: 1fr; }
+  .nav__links { display: none; }
+}
+@media (max-width: 560px) {
+  .form__row, .form__row--3 { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  .data__cards { grid-template-columns: 1fr 1fr; }
+  .data__features { grid-template-columns: 1fr; }
+  .result__record { grid-template-columns: 1fr; }
+  .nav__cta { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="nav__inner">
+    <a href="#top" class="nav__brand">
+      <span class="nav__mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><path d="M12 7l2.6 4.4L19 14l-4.4 2.6L12 21l-2.6-4.4L5 14l4.4-2.6L12 7z" stroke-width="1.1"/></svg>
+      </span>
+      <span class="nav__name">Plat<span class="nav__dot">.</span></span>
+    </a>
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#predict">Estimator</a>
+      <a href="#how">Method</a>
+      <a href="#model">Model</a>
+      <a href="#data">Dataset</a>
+      <a href="#about">About</a>
+    </nav>
+    <a href="#predict" class="btn btn--sm nav__cta">Run an estimate</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="hero__grid">
+      <div class="hero__copy">
+        <p class="eyebrow">Machine-learned property appraisal</p>
+        <h1 class="hero__title">A price, <em>surveyed</em> —<br />not guessed.</h1>
+        <p class="hero__lead">
+          Describe a house and get an instant valuation from a model trained
+          on real housing records. Every estimate is plotted the same way a
+          surveyor plots a parcel: measured, logged, and stamped.
+        </p>
+        <div class="hero__actions">
+          <a href="#predict" class="btn">Survey a house</a>
+          <a href="#how" class="btn btn--ghost">See the method</a>
+        </div>
+      </div>
+
+      <aside class="hero__stats" aria-label="Model at a glance">
+        <p class="hero__stats-title">Field notes</p>
+        <dl class="stat">
+          <div class="stat__row"><dt>Houses surveyed</dt><dd><span class="stat__num">545</span></dd></div>
+          <div class="stat__row"><dt>Features per house</dt><dd><span class="stat__num">12</span></dd></div>
+          <div class="stat__row"><dt>Instrument used</dt><dd><span class="stat__tag">Gradient Boosting</span></dd></div>
+          <div class="stat__row"><dt>Accuracy (R²)</dt><dd><span class="stat__num">0.67</span></dd></div>
+        </dl>
+      </aside>
+    </div>
+  </section>
+
+  <section class="predict" id="predict">
+    <div class="section-head">
+      <p class="eyebrow">The estimator</p>
+      <h2 class="section-title">Describe the house</h2>
+      <p class="section-sub">
+        Fill in the field sheet below. It starts pre-loaded with a sample
+        house, so you can run an estimate right away and adjust from there.
+      </p>
+    </div>
+
+    <div class="predict__grid">
+
+      <form class="form card" id="predict-form" novalidate>
+
+        <fieldset class="form__group">
+          <legend class="form__legend">Size &amp; layout</legend>
+          <div class="form__row">
+            <label class="field">
+              <span class="field__label">Area (sq ft)</span>
+              <input class="field__input" type="number" name="area" min="1" step="1" value="5000" required />
+            </label>
+            <label class="field">
+              <span class="field__label">Parking spaces</span>
+              <input class="field__input" type="number" name="parking" min="0" max="20" step="1" value="2" required />
+            </label>
+          </div>
+          <div class="form__row form__row--3">
+            <label class="field">
+              <span class="field__label">Bedrooms</span>
+              <input class="field__input" type="number" name="bedrooms" min="0" max="20" step="1" value="4" required />
+            </label>
+            <label class="field">
+              <span class="field__label">Bathrooms</span>
+              <input class="field__input" type="number" name="bathrooms" min="0" max="20" step="1" value="2" required />
+            </label>
+            <label class="field">
+              <span class="field__label">Stories</span>
+              <input class="field__input" type="number" name="stories" min="0" max="20" step="1" value="2" required />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form__group">
+          <legend class="form__legend">Features</legend>
+          <div class="form__row">
+            <label class="field">
+              <span class="field__label">Main road access</span>
+              <select class="field__input" name="mainroad">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field__label">Guest room</span>
+              <select class="field__input" name="guestroom">
+                <option value="no" selected>No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </label>
+          </div>
+          <div class="form__row">
+            <label class="field">
+              <span class="field__label">Basement</span>
+              <select class="field__input" name="basement">
+                <option value="yes">Yes</option>
+                <option value="no" selected>No</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field__label">Hot water heating</span>
+              <select class="field__input" name="hotwaterheating">
+                <option value="no" selected>No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </label>
+          </div>
+          <div class="form__row">
+            <label class="field">
+              <span class="field__label">Air conditioning</span>
+              <select class="field__input" name="airconditioning">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field__label">Preferred area</span>
+              <select class="field__input" name="prefarea">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </label>
+          </div>
+          <div class="form__row">
+            <label class="field">
+              <span class="field__label">Furnishing status</span>
+              <select class="field__input" name="furnishingstatus">
+                <option value="furnished">Furnished</option>
+                <option value="semi-furnished">Semi-furnished</option>
+                <option value="unfurnished">Unfurnished</option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <p class="form__error" id="form-error" role="alert" hidden></p>
+
+        <button type="submit" class="btn btn--block" id="predict-btn">
+          <span class="btn__label">Run the estimate</span>
+          <span class="btn__spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+
+      <aside class="result card" id="result" aria-live="polite">
+        <div class="result__inner">
+          <span class="result__corner-tl"></span>
+          <span class="result__corner-br"></span>
+          <svg class="result__rose" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1"><circle cx="12" cy="12" r="9.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><path d="M12 7l2.6 4.4L19 14l-4.4 2.6L12 21l-2.6-4.4L5 14l4.4-2.6L12 7z"/></svg>
+          <p class="result__plat" id="result-plat">Field record</p>
+
+          <div class="result__empty" id="result-empty">
+            <p class="result__hint">Your estimate will appear here once you submit the field sheet.</p>
+          </div>
+
+          <div class="result__filled" id="result-filled" hidden>
+            <p class="result__label">Estimated house price</p>
+            <p class="result__price" id="result-price">₹ —</p>
+            <p class="result__note">Based on patterns in the training data. This is an estimate, not a guaranteed market price.</p>
+            <div class="result__record" id="result-record"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="how" id="how">
+    <div class="section-head">
+      <p class="eyebrow">How it works</p>
+      <h2 class="section-title">From your entries to a price</h2>
+      <p class="section-sub">Every estimate travels the same four-step survey — the exact pipeline used when the model was trained.</p>
+    </div>
+
+    <ol class="steps">
+      <li class="step">
+        <span class="step__num">01</span>
+        <h3 class="step__title">You enter details</h3>
+        <p class="step__text">Twelve features describe the house — size, rooms, and yes/no amenities like air conditioning.</p>
+      </li>
+      <li class="step">
+        <span class="step__num">02</span>
+        <h3 class="step__title">Preprocessing</h3>
+        <p class="step__text">Numbers are scaled and text answers become 0/1 columns, so the model receives clean, all-numeric data.</p>
+      </li>
+      <li class="step">
+        <span class="step__num">03</span>
+        <h3 class="step__title">The model predicts</h3>
+        <p class="step__text">A Gradient Boosting model — many small decision trees working together — estimates the price.</p>
+      </li>
+      <li class="step">
+        <span class="step__num">04</span>
+        <h3 class="step__title">You see the estimate</h3>
+        <p class="step__text">The predicted price is sent back and shown here, instantly.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="model" id="model">
+    <div class="section-head">
+      <p class="eyebrow">Model information</p>
+      <h2 class="section-title">Why Gradient Boosting</h2>
+      <p class="section-sub">Four regression models were trained and compared on unseen test houses. Gradient Boosting won on every metric.</p>
+    </div>
+
+    <div class="table-wrap card">
+      <table class="table">
+        <thead>
+          <tr><th scope="col">Model</th><th scope="col">MAE (₹)</th><th scope="col">RMSE (₹)</th><th scope="col">R²</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Linear Regression</td><td>970,043</td><td>1,324,507</td><td>0.6529</td></tr>
+          <tr><td>Decision Tree</td><td>1,234,858</td><td>1,699,626</td><td>0.4285</td></tr>
+          <tr><td>Random Forest</td><td>1,025,961</td><td>1,403,925</td><td>0.6101</td></tr>
+          <tr class="table__best"><td>Gradient Boosting <span class="pill">Selected</span></td><td>967,227</td><td>1,299,730</td><td>0.6658</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="model__foot">Lower MAE and RMSE are better (average error in rupees); higher R² is better (share of price variation explained, from 0 to 1).</p>
+  </section>
+
+  <section class="data" id="data">
+    <div class="section-head">
+      <p class="eyebrow">The dataset</p>
+      <h2 class="section-title">What the model learned from</h2>
+    </div>
+
+    <div class="data__grid">
+      <div class="data__cards">
+        <div class="mini card"><span class="mini__num">545</span><span class="mini__label">rows (houses)</span></div>
+        <div class="mini card"><span class="mini__num">13</span><span class="mini__label">columns</span></div>
+        <div class="mini card"><span class="mini__num">12</span><span class="mini__label">input features</span></div>
+        <div class="mini card"><span class="mini__num">1</span><span class="mini__label">target (price)</span></div>
+      </div>
+
+      <div class="data__features card">
+        <div class="feat">
+          <h3 class="feat__title">Numerical</h3>
+          <ul class="feat__list"><li>area</li><li>bedrooms</li><li>bathrooms</li><li>stories</li><li>parking</li></ul>
+        </div>
+        <div class="feat">
+          <h3 class="feat__title">Yes / No</h3>
+          <ul class="feat__list"><li>mainroad</li><li>guestroom</li><li>basement</li><li>hotwaterheating</li><li>airconditioning</li><li>prefarea</li></ul>
+        </div>
+        <div class="feat">
+          <h3 class="feat__title">Category</h3>
+          <ul class="feat__list"><li>furnishingstatus<br /><small>furnished · semi-furnished · unfurnished</small></li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="about" id="about">
+    <div class="about__inner">
+      <p class="eyebrow eyebrow--light">About the project</p>
+      <h2 class="section-title section-title--light">A student project, built end to end.</h2>
+      <p class="about__text">
+        Plat is a supervised machine-learning web application. A regression
+        model is trained on a housing dataset, saved as a reusable pipeline,
+        and served through a FastAPI backend. This site is the front door:
+        it collects a house's details, sends them to the API, and displays
+        the model's estimate.
+      </p>
+      <div class="about__stack">
+        <span class="chip">Python</span>
+        <span class="chip">pandas</span>
+        <span class="chip">scikit-learn</span>
+        <span class="chip">FastAPI</span>
+        <span class="chip">HTML · CSS · JS</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer__inner">
+    <span class="footer__brand">Plat<span class="nav__dot">.</span></span>
+    <p class="footer__note">House Price Predictor · Student Group Project · <span id="year"></span></p>
+    <p class="footer__disclaimer">Estimates are for educational purposes only and are not financial advice.</p>
+  </div>
+</footer>
+
+<script>
+/* ==================================================================
+   Plat — combined script
+   Same behavior as the original app: validate, POST to FastAPI,
+   render the real predicted price. Nothing here invents a number.
+   ================================================================== */
+
+const API_BASE = "http://127.0.0.1:8000";
+
+const form          = document.getElementById("predict-form");
+const resultEmpty   = document.getElementById("result-empty");
+const resultFilled  = document.getElementById("result-filled");
+const resultPrice   = document.getElementById("result-price");
+const resultRecord  = document.getElementById("result-record");
+const resultPlat    = document.getElementById("result-plat");
+const formError     = document.getElementById("form-error");
+const submitBtn     = document.getElementById("predict-btn");
+const nav           = document.getElementById("nav");
+
+function handleScroll() {
+  if (window.scrollY > 8) { nav.classList.add("is-scrolled"); }
+  else { nav.classList.remove("is-scrolled"); }
+}
+window.addEventListener("scroll", handleScroll);
+handleScroll();
+
+document.getElementById("year").textContent = new Date().getFullYear();
+
+function getFormData() {
+  const data = new FormData(form);
+  return {
+    area:             Number(data.get("area")),
+    bedrooms:         Number(data.get("bedrooms")),
+    bathrooms:        Number(data.get("bathrooms")),
+    stories:          Number(data.get("stories")),
+    parking:          Number(data.get("parking")),
+    mainroad:         data.get("mainroad"),
+    guestroom:        data.get("guestroom"),
+    basement:         data.get("basement"),
+    hotwaterheating:  data.get("hotwaterheating"),
+    airconditioning:  data.get("airconditioning"),
+    prefarea:         data.get("prefarea"),
+    furnishingstatus: data.get("furnishingstatus"),
+  };
+}
+
+function renderRecord(house) {
+  const labels = {
+    area: "Area", bedrooms: "Bedrooms", bathrooms: "Bathrooms",
+    stories: "Stories", parking: "Parking", mainroad: "Main road",
+    guestroom: "Guest room", basement: "Basement",
+    hotwaterheating: "Hot water", airconditioning: "Air con",
+    prefarea: "Pref. area", furnishingstatus: "Furnishing",
+  };
+  resultRecord.innerHTML = Object.keys(labels).map(function (key) {
+    return (
+      '<div class="rec"><span class="rec__k">' + labels[key] +
+      '</span><span class="rec__v">' + house[key] + "</span></div>"
+    );
+  }).join("");
+}
+
+const NUMERIC_LIMITS = {
+  area:      { min: 1, max: null, label: "Area" },
+  bedrooms:  { min: 0, max: 20,   label: "Bedrooms" },
+  bathrooms: { min: 0, max: 20,   label: "Bathrooms" },
+  stories:   { min: 0, max: 20,   label: "Stories" },
+  parking:   { min: 0, max: 20,   label: "Parking spaces" },
+};
+
+function validateForm() {
+  const data = new FormData(form);
+  for (const key in NUMERIC_LIMITS) {
+    const rule = NUMERIC_LIMITS[key];
+    const raw  = (data.get(key) || "").trim();
+    if (raw === "") { return "Please fill in the " + rule.label + " field."; }
+    const value = Number(raw);
+    if (Number.isNaN(value)) { return rule.label + " must be a number."; }
+    if (!Number.isInteger(value)) { return rule.label + " must be a whole number (no decimals)."; }
+    if (value < rule.min) { return rule.label + " must be at least " + rule.min + "."; }
+    if (rule.max !== null && value > rule.max) { return rule.label + " must be " + rule.max + " or less."; }
+  }
+  return null;
+}
+
+function nextPlatNumber() {
+  const n = 100000 + Math.floor(Math.random() * 899999);
+  return "Plat No. " + n;
+}
+
+form.addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  const problem = validateForm();
+  if (problem) {
+    formError.hidden = false;
+    formError.textContent = problem;
+    return;
+  }
+
+  const house = getFormData();
+
+  resultEmpty.hidden = true;
+  resultFilled.hidden = false;
+  resultPlat.textContent = nextPlatNumber();
+  renderRecord(house);
+
+  formError.hidden = true;
+  formError.textContent = "";
+  submitBtn.classList.add("is-loading");
+  submitBtn.disabled = true;
+  resultPrice.textContent = "Surveying…";
+
+  try {
+    const response = await fetch(API_BASE + "/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(house),
+    });
+
+    if (!response.ok) {
+      let message = "The server rejected the request (status " + response.status + ").";
+      try {
+        const errBody = await response.json();
+        if (errBody && errBody.detail) {
+          if (Array.isArray(errBody.detail)) {
+            message = "Please check your inputs: " +
+              errBody.detail.map(function (d) { return d.msg; }).join("; ");
+          } else {
+            message = String(errBody.detail);
+          }
+        }
+      } catch (parseErr) { }
+      throw new Error(message);
+    }
+
+    const result = await response.json();
+    resultPrice.textContent = result.formatted_price.replace("Rs", "₹");
+  } catch (error) {
+    console.error("Prediction request failed:", error);
+    resultPrice.textContent = "₹ —";
+    formError.hidden = false;
+    if (error instanceof TypeError) {
+      formError.textContent =
+        "Could not reach the prediction server. Make sure the backend is running at " +
+        API_BASE + " and try again.";
+    } else {
+      formError.textContent = error.message;
+    }
+  } finally {
+    submitBtn.classList.remove("is-loading");
+    submitBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
