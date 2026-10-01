@@ -80,7 +80,7 @@ House-Price-Predictor/
 │   │   ├── model.py             # Loads the .pkl model, runs predictions
 │   │   └── schemas.py           # Request/response validation (Pydantic)
 │   ├── data/
-│   │   └── Housing.csv          # The dataset (545 houses)
+│   │   └── Housing.csv          # The dataset (5,000 houses)
 │   ├── model/
 │   │   └── house_price_model.pkl  # Saved preprocessing + model pipeline
 │   ├── data_analysis.py         # Exploratory data analysis (EDA) script
@@ -102,7 +102,7 @@ House-Price-Predictor/
 
 ## 📊 Dataset
 
-The model is trained on **`Housing.csv`** — **545 houses**, **13 columns** (12 features + the price target).
+The model is trained on **`Housing.csv`** — **5,000 houses**, **13 columns** (12 features + the price target).
 
 **Target**
 
@@ -140,7 +140,6 @@ The dataset has **no missing values and no duplicate rows** (verified in `data_a
 **Models compared** (`train_model.py`, 80/20 train-test split, `random_state=42`):
 
 - Linear Regression
-- Decision Tree Regressor
 - Random Forest Regressor
 - Gradient Boosting Regressor
 
@@ -150,18 +149,17 @@ Each model is scored on **MAE**, **RMSE**, and **R²**, and the best is refit on
 
 ## 📈 Model Results
 
-Evaluated on the held-out test set (109 houses):
+Evaluated on the held-out test set (1,000 houses):
 
-| Model | MAE (₹) | RMSE (₹) | R² |
-|---|---:|---:|---:|
-| Linear Regression | 970,043 | 1,324,507 | 0.6529 |
-| Decision Tree | 1,234,858 | 1,699,626 | 0.4285 |
-| Random Forest | 1,025,961 | 1,403,925 | 0.6101 |
-| **Gradient Boosting ✅ (selected)** | **967,227** | **1,299,730** | **0.6658** |
+| Model | CV MAE (₹) | MAE (₹) | RMSE (₹) | R² |
+|---|---:|---:|---:|---:|
+| **Linear Regression ✅ (selected)** | **98,626** | **102,249** | **127,679** | **0.9957** |
 
-**Selected model: Gradient Boosting Regressor** — it won on all three metrics. It explains about **66.6%** of the variation in house prices, with an average error of roughly **₹9.67 lakh** per house.
+**Selected model: Linear Regression** — it was selected using 5-fold cross-validation. It explains about **99.6%** of the variation in house prices, with an average error of roughly **₹1.02 lakh** per house on the held-out test set.
 
-> **Honest note:** an R² of ~0.67 is realistic for a 545-row dataset with limited features. This tool gives a data-driven *estimate*, not a guaranteed market price.
+> **Data-quality note:** this unusually high score should be interpreted carefully. It may indicate that the uploaded prices follow a near-linear formula based on the available features. Validate the model on independently collected real-world houses before treating the score as market accuracy.
+
+> **Honest note:** this tool gives a data-driven *estimate*, not a guaranteed market price. Accuracy depends on the quality and coverage of the current dataset.
 
 ---
 

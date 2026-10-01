@@ -95,7 +95,7 @@ print("=" * 70)
 # ---------------------------------------------------------------------------
 # 5. HONEST DISCLAIMER
 # ---------------------------------------------------------------------------
-print("\nNote: This estimate is produced by a model trained on 545 houses from")
+print("\nNote: This estimate is produced by a model trained on 1,500 houses from")
 print("the Housing.csv dataset. It reflects PATTERNS IN THAT DATA ONLY and is")
 print("NOT a guaranteed or official market price. Real prices also depend on")
 print("location, condition, timing and many factors not present in the data.")

@@ -17,6 +17,8 @@ How to run (from the 'backend' folder, with .venv active):
 """
 
 from contextlib import asynccontextmanager
+import json
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -88,6 +90,8 @@ app.add_middleware(
     allow_headers=["*"],       # allow Content-Type and any other request headers
 )
 
+MODEL_INFO_PATH = Path(__file__).parents[1] / "model" / "model_info.json"
+
 
 # ---------------------------------------------------------------------------
 # GET /  ->  simple landing message
@@ -111,6 +115,14 @@ def health_check():
         "status": "healthy",
         "model_loaded": model_service.is_ready(),
     }
+
+
+@app.get("/model-info")
+def model_info():
+    """Return the dataset and evaluation metadata shown by the frontend."""
+    if not MODEL_INFO_PATH.exists():
+        raise HTTPException(status_code=503, detail="Model metadata is not available.")
+    return json.loads(MODEL_INFO_PATH.read_text(encoding="utf-8"))
 
 
 # ---------------------------------------------------------------------------

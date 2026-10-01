@@ -25,6 +25,11 @@ const formError     = document.getElementById("form-error");
 const submitBtn     = document.getElementById("predict-btn");
 const nav           = document.getElementById("nav");
 
+const statRows      = document.getElementById("stat-rows");
+const statFeatures  = document.getElementById("stat-features");
+const statModel     = document.getElementById("stat-model");
+const statR2        = document.getElementById("stat-r2");
+
 
 /* ---- 1. Navbar: add a subtle border/shadow once the page scrolls ---- */
 function handleScroll() {
@@ -40,6 +45,23 @@ handleScroll(); // run once on load
 
 /* ---- 2. Footer year ---- */
 document.getElementById("year").textContent = new Date().getFullYear();
+
+
+/* Keep the field notes synchronized with the latest trained model. */
+async function loadModelInfo() {
+    try {
+        const response = await fetch(API_BASE + "/model-info");
+        if (!response.ok) return;
+        const info = await response.json();
+        statRows.textContent = Number(info.rows).toLocaleString();
+        statFeatures.textContent = info.features;
+        statModel.textContent = info.model;
+        statR2.textContent = Number(info.r2).toFixed(2);
+    } catch (error) {
+        console.error("Could not load model information:", error);
+    }
+}
+loadModelInfo();
 
 
 /* ---- 3. Read the form into a plain object with correct types ---------

@@ -42,9 +42,12 @@ You can RUN this file directly to SEE the transformation happen:
 """
 
 import pandas as pd
+import numpy as np
 from pathlib import Path
 
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
 
@@ -58,7 +61,17 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 TARGET = "price"
 
 # Number columns (get scaled).
-NUMERICAL_FEATURES = ["area", "bedrooms", "bathrooms", "stories", "parking"]
+NUMERICAL_FEATURES = [
+    "area",
+    "bedrooms",
+    "bathrooms",
+    "stories",
+    "parking",
+    "total_rooms",
+    "amenity_count",
+    "area_per_bedroom",
+    "log_area",
+]
 
 # Text columns (get one-hot encoded). This includes both the yes/no columns
 # and the multi-class furnishingstatus column - OneHotEncoder handles both.
@@ -75,6 +88,30 @@ CATEGORICAL_FEATURES = [
 # The full list of input features, in a fixed order. Keeping this order stable
 # matters because the API will build its input rows in this same order.
 ALL_FEATURES = NUMERICAL_FEATURES + CATEGORICAL_FEATURES
+
+
+class HousingFeatureEngineer(BaseEstimator, TransformerMixin):
+    """Add stable, domain-informed features while preserving raw inputs."""
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        features = X.copy()
+        features["total_rooms"] = features["bedrooms"] + features["bathrooms"]
+        features["amenity_count"] = features[
+            [
+                "mainroad",
+                "guestroom",
+                "basement",
+                "hotwaterheating",
+                "airconditioning",
+                "prefarea",
+            ]
+        ].eq("yes").sum(axis=1)
+        features["area_per_bedroom"] = features["area"] / features["bedrooms"].clip(lower=1)
+        features["log_area"] = np.log1p(features["area"])
+        return features
 
 
 # ---------------------------------------------------------------------------
@@ -101,13 +138,16 @@ def build_preprocessor() -> ColumnTransformer:
     )
 
     # ColumnTransformer routes each group of columns to its transformer.
-    preprocessor = ColumnTransformer(
+    column_transformer = ColumnTransformer(
         transformers=[
             ("num", numeric_transformer, NUMERICAL_FEATURES),
             ("cat", categorical_transformer, CATEGORICAL_FEATURES),
         ]
     )
-    return preprocessor
+    return Pipeline(steps=[
+        ("feature_engineering", HousingFeatureEngineer()),
+        ("columns", column_transformer),
+    ])
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +161,9 @@ def load_data():
     """
     csv_path = Path(__file__).parent / "data" / "Housing.csv"
     df = pd.read_csv(csv_path)
-    X = df[ALL_FEATURES]   # only the feature columns, in our fixed order
+    X = df[CATEGORICAL_FEATURES + [
+        "area", "bedrooms", "bathrooms", "stories", "parking"
+    ]]
     y = df[TARGET]         # just the price column
     return X, y
 

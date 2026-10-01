@@ -1,0 +1,9 @@
+{
+  "rows": 5000,
+  "features": 12,
+  "model": "Linear Regression",
+  "cv_mae": 98625.72,
+  "mae": 102248.6,
+  "rmse": 127678.84,
+  "r2": 0.9957
+}

@@ -360,10 +360,10 @@ select.field__input {
       <aside class="hero__stats" aria-label="Model at a glance">
         <p class="hero__stats-title">Field notes</p>
         <dl class="stat">
-          <div class="stat__row"><dt>Houses surveyed</dt><dd><span class="stat__num">545</span></dd></div>
-          <div class="stat__row"><dt>Features per house</dt><dd><span class="stat__num">12</span></dd></div>
-          <div class="stat__row"><dt>Instrument used</dt><dd><span class="stat__tag">Gradient Boosting</span></dd></div>
-          <div class="stat__row"><dt>Accuracy (R²)</dt><dd><span class="stat__num">0.67</span></dd></div>
+          <div class="stat__row"><dt>Houses surveyed</dt><dd><span class="stat__num" id="stat-rows">5,000</span></dd></div>
+          <div class="stat__row"><dt>Features per house</dt><dd><span class="stat__num" id="stat-features">12</span></dd></div>
+          <div class="stat__row"><dt>Instrument used</dt><dd><span class="stat__tag" id="stat-model">Linear Regression</span></dd></div>
+          <div class="stat__row"><dt>Accuracy (R²)</dt><dd><span class="stat__num" id="stat-r2">99.57%</span></dd></div>
         </dl>
       </aside>
     </div>
@@ -645,6 +645,26 @@ window.addEventListener("scroll", handleScroll);
 handleScroll();
 
 document.getElementById("year").textContent = new Date().getFullYear();
+
+const statRows = document.getElementById("stat-rows");
+const statFeatures = document.getElementById("stat-features");
+const statModel = document.getElementById("stat-model");
+const statR2 = document.getElementById("stat-r2");
+
+async function loadModelInfo() {
+  try {
+    const response = await fetch(API_BASE + "/model-info");
+    if (!response.ok) return;
+    const info = await response.json();
+    statRows.textContent = Number(info.rows).toLocaleString();
+    statFeatures.textContent = info.features;
+    statModel.textContent = info.model;
+    statR2.textContent = (Number(info.r2) * 100).toFixed(2) + "%";
+  } catch (error) {
+    console.error("Could not load model information:", error);
+  }
+}
+loadModelInfo();
 
 function getFormData() {
   const data = new FormData(form);
